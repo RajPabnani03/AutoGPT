@@ -17,7 +17,6 @@ from autogpt.agents.agent import Agent
 from autogpt.agents.utils.exceptions import DuplicateOperationError
 from autogpt.command_decorator import command
 from autogpt.core.utils.json_schema import JSONSchema
-from autogpt.memory.vector import MemoryItem, VectorMemory
 
 from .decorators import sanitize_path_arg
 from .file_context import open_file, open_folder  # NOQA
@@ -163,32 +162,6 @@ def read_file(filename: Path, agent: Agent) -> str:
     #     return file_memory.summary
 
     return content
-
-
-def ingest_file(
-    filename: str,
-    memory: VectorMemory,
-) -> None:
-    """
-    Ingest a file by reading its content, splitting it into chunks with a specified
-    maximum length and overlap, and adding the chunks to the memory storage.
-
-    Args:
-        filename: The name of the file to ingest
-        memory: An object with an add() method to store the chunks in memory
-    """
-    try:
-        logger.info(f"Ingesting file {filename}")
-        content = read_file(filename)
-
-        # TODO: differentiate between different types of files
-        file_memory = MemoryItem.from_text_file(content, filename)
-        logger.debug(f"Created memory: {file_memory.dump(True)}")
-        memory.add(file_memory)
-
-        logger.info(f"Ingested {len(file_memory.e_chunks)} chunks from {filename}")
-    except Exception as err:
-        logger.warn(f"Error while ingesting file '{filename}': {err}")
 
 
 @command(
