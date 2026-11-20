@@ -5,47 +5,29 @@ from __future__ import annotations
 COMMAND_CATEGORY = "web_browse"
 COMMAND_CATEGORY_TITLE = "Web Browsing"
 
+import functools
 import logging
 import re
 from pathlib import Path
 from sys import platform
-from typing import TYPE_CHECKING, Optional, Type, List, Tuple
+from typing import Any, Callable, List, Tuple
+from urllib.parse import urljoin, urlparse
 
 from bs4 import BeautifulSoup
+from requests.compat import urljoin
 from selenium.common.exceptions import WebDriverException
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.chrome.service import Service as ChromeDriverService
 from selenium.webdriver.chrome.webdriver import WebDriver as ChromeDriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.options import ArgOptions as BrowserOptions
-from selenium.webdriver.edge.options import Options as EdgeOptions
-from selenium.webdriver.edge.service import Service as EdgeDriverService
-from selenium.webdriver.edge.webdriver import WebDriver as EdgeDriver
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
-from selenium.webdriver.firefox.service import Service as GeckoDriverService
-from selenium.webdriver.firefox.webdriver import WebDriver as FirefoxDriver
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.safari.options import Options as SafariOptions
-from selenium.webdriver.safari.webdriver import WebDriver as SafariDriver
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.firefox import GeckoDriverManager
-from webdriver_manager.microsoft import EdgeChromiumDriverManager as EdgeDriverManager
 
+from forge.sdk.errors import *
 
 from ..registry import ability
-from forge.sdk.errors import *
-import functools
-import re
-from typing import Any, Callable
-from urllib.parse import urljoin, urlparse
-
-from requests.compat import urljoin
-
-
-from bs4 import BeautifulSoup
-from requests.compat import urljoin
 
 
 def extract_hyperlinks(soup: BeautifulSoup, base_url: str) -> list[tuple[str, str]]:
@@ -74,7 +56,6 @@ def format_hyperlinks(hyperlinks: list[tuple[str, str]]) -> list[str]:
         List[str]: The formatted hyperlinks
     """
     return [f"{link_text} ({link_url})" for link_text, link_url in hyperlinks]
-
 
 
 def validate_url(func: Callable[..., Any]) -> Any:
@@ -178,8 +159,6 @@ def check_local_file_access(url: str) -> bool:
     return any(url.startswith(prefix) for prefix in local_prefixes)
 
 
-
-
 logger = logging.getLogger(__name__)
 
 FILE_DIR = Path(__file__).parent.parent
@@ -201,17 +180,19 @@ class BrowsingError(CommandExecutionError):
             "type": "string",
             "required": True,
         },
-                {
+        {
             "name": "question",
             "description": "A question that you want to answer using the content of the webpage.",
             "type": "string",
             "required": False,
-        }
+        },
     ],
     output_type="string",
 )
 @validate_url
-async def read_webpage(agent, task_id: str, url: str, question: str = "") -> Tuple(str, List[str]):
+async def read_webpage(
+    agent, task_id: str, url: str, question: str = ""
+) -> Tuple(str, List[str]):
     """Browse a website and return the answer and links to the user
 
     Args:
@@ -306,53 +287,27 @@ def open_page_in_browser(url: str) -> WebDriver:
         driver (WebDriver): A driver object representing the browser window to scrape
     """
     logging.getLogger("selenium").setLevel(logging.CRITICAL)
-    selenium_web_browser = "chrome"
-    selenium_headless = True
-    options_available: dict[str, Type[BrowserOptions]] = {
-        "chrome": ChromeOptions,
-        "edge": EdgeOptions,
-        "firefox": FirefoxOptions,
-        "safari": SafariOptions,
-    }
-
-    options: BrowserOptions = options_available[selenium_web_browser]()
+    options = ChromeOptions()
     options.add_argument(
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.5615.49 Safari/537.36"
     )
 
-    if selenium_web_browser == "firefox":
-        if selenium_headless:
-            options.headless = True
-            options.add_argument("--disable-gpu")
-        driver = FirefoxDriver(
-            service=GeckoDriverService(GeckoDriverManager().install()), options=options
-        )
-    elif selenium_web_browser == "edge":
-        driver = EdgeDriver(
-            service=EdgeDriverService(EdgeDriverManager().install()), options=options
-        )
-    elif selenium_web_browser == "safari":
-        # Requires a bit more setup on the users end
-        # See https://developer.apple.com/documentation/webkit/testing_with_webdriver_in_safari
-        driver = SafariDriver(options=options)
-    else:
-        if platform == "linux" or platform == "linux2":
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--remote-debugging-port=9222")
+    if platform == "linux" or platform == "linux2":
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--remote-debugging-port=9222")
 
-        options.add_argument("--no-sandbox")
-        if selenium_headless:
-            options.add_argument("--headless=new")
-            options.add_argument("--disable-gpu")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--headless=new")
+    options.add_argument("--disable-gpu")
 
-        chromium_driver_path = Path("/usr/bin/chromedriver")
+    chromium_driver_path = Path("/usr/bin/chromedriver")
 
-        driver = ChromeDriver(
-            service=ChromeDriverService(str(chromium_driver_path))
-            if chromium_driver_path.exists()
-            else ChromeDriverService(ChromeDriverManager().install()),
-            options=options,
-        )
+    driver = ChromeDriver(
+        service=ChromeDriverService(str(chromium_driver_path))
+        if chromium_driver_path.exists()
+        else ChromeDriverService(ChromeDriverManager().install()),
+        options=options,
+    )
     driver.get(url)
 
     WebDriverWait(driver, 10).until(
@@ -372,4 +327,3 @@ def close_browser(driver: WebDriver) -> None:
         None
     """
     driver.quit()
-
