@@ -134,11 +134,6 @@ app.add_middleware(
 )
 
 
-def stream_output(pipe):
-    for line in pipe:
-        print(line, end="")
-
-
 @router.post("/reports")
 def run_single_test(body: CreateReportRequest) -> Any:
     pids = find_agbenchmark_without_uvicorn()
