@@ -5,8 +5,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from ..base import BaseAgent
-
 from autogpt.file_workspace import FileWorkspace
 
 from ..base import AgentFileManager, BaseAgentConfiguration
@@ -48,10 +46,3 @@ def _setup_workspace(file_manager: AgentFileManager, config: BaseAgentConfigurat
     )
     workspace.initialize()
     return workspace
-
-
-def get_agent_workspace(agent: BaseAgent) -> FileWorkspace | None:
-    if isinstance(agent, FileWorkspaceMixin):
-        return agent.workspace
-
-    return None
