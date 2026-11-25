@@ -7,8 +7,6 @@ from typing import Callable, Optional, ParamSpec, TypeVar
 
 import openai
 import tiktoken
-from openai.error import APIError, RateLimitError
-
 from autogpt.core.configuration import (
     Configurable,
     SystemConfiguration,
@@ -35,6 +33,7 @@ from autogpt.core.resource.model_providers.schema import (
     ModelTokenizer,
 )
 from autogpt.core.utils.json_schema import JSONSchema
+from openai.error import APIError, RateLimitError
 
 _T = TypeVar("_T")
 _P = ParamSpec("_P")
@@ -564,18 +563,6 @@ def format_openai_function_for_prompt(func: CompletionModelFunction) -> str:
             *[param_signature(name, p) for name, p in func.parameters.items()],
             "}) => any;",
         ]
-    )
-
-
-def count_openai_functions_tokens(
-    functions: list[CompletionModelFunction], count_tokens: Callable[[str], int]
-) -> int:
-    """Returns the number of tokens taken up by a set of function definitions
-
-    Reference: https://community.openai.com/t/how-to-calculate-the-tokens-when-using-function-call/266573/18
-    """
-    return count_tokens(
-        f"# Tools\n\n## functions\n\n{format_function_specs_as_typescript_ns(functions)}"
     )
 
 
