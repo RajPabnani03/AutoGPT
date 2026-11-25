@@ -29,7 +29,6 @@ from .decorators import sanitize_path_arg
 logger = logging.getLogger(__name__)
 
 ALLOWLIST_CONTROL = "allowlist"
-DENYLIST_CONTROL = "denylist"
 
 
 @command(
